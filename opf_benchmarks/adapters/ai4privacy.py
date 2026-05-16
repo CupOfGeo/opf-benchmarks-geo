@@ -6,13 +6,9 @@ dataset's ``privacy_mask`` field is the gold span list.
 
 from __future__ import annotations
 
-import argparse
 import json
-from pathlib import Path
 
 from datasets import load_dataset
-
-from . import write_opf_jsonl
 
 
 HF_PATH = "ai4privacy/pii-masking-300k"
@@ -51,24 +47,3 @@ def iter_examples(*, max_examples: int | None = None, language: str = "English")
             "spans": spans,
         }
         yielded += 1
-
-
-def main() -> None:
-    p = argparse.ArgumentParser()
-    p.add_argument("--out-dir", default="data", type=Path)
-    p.add_argument("--max-examples", type=int, default=None)
-    p.add_argument("--language", default="English")
-    args = p.parse_args()
-
-    stats = write_opf_jsonl(
-        benchmark="ai4privacy",
-        out_dir=args.out_dir,
-        examples=iter_examples(
-            max_examples=args.max_examples, language=args.language
-        ),
-    )
-    print(json.dumps(stats, indent=2, sort_keys=True))
-
-
-if __name__ == "__main__":
-    main()

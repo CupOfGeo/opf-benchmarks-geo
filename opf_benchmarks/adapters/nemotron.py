@@ -7,14 +7,10 @@ is fully out-of-distribution and the comparison should be framed accordingly.
 
 from __future__ import annotations
 
-import argparse
 import json
 from ast import literal_eval as parse_python_literal
-from pathlib import Path
 
 from datasets import load_dataset
-
-from . import write_opf_jsonl
 
 
 HF_PATH = "nvidia/Nemotron-PII"
@@ -55,21 +51,3 @@ def iter_examples(*, max_examples: int | None = None):
             "spans": spans,
         }
         yielded += 1
-
-
-def main() -> None:
-    p = argparse.ArgumentParser()
-    p.add_argument("--out-dir", default="data", type=Path)
-    p.add_argument("--max-examples", type=int, default=None)
-    args = p.parse_args()
-
-    stats = write_opf_jsonl(
-        benchmark="nemotron",
-        out_dir=args.out_dir,
-        examples=iter_examples(max_examples=args.max_examples),
-    )
-    print(json.dumps(stats, indent=2, sort_keys=True))
-
-
-if __name__ == "__main__":
-    main()
