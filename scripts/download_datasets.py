@@ -11,6 +11,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 import sys
 from collections import Counter
 from pathlib import Path
@@ -116,3 +117,7 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
+    # huggingface_hub leaves background threads alive that block interpreter
+    # shutdown when load_dataset is called with streaming=True. The work is
+    # done at this point, so hard-exit instead of waiting on them.
+    os._exit(0)

@@ -12,125 +12,101 @@ from __future__ import annotations
 
 import argparse
 import json
+import re
 import subprocess
 import sys
 from pathlib import Path
 
+from tqdm import tqdm
+
 
 BENCHMARKS = ("argilla", "ai4privacy", "nemotron")
 
+# (mode_name, dataset_suffix, mode_args)
+MODES = (
+    ("untyped_full",     "full",     ["--eval-mode", "untyped"]),
+    ("untyped_opfscope", "opfscope", ["--eval-mode", "untyped"]),
+    ("typed_opfscope",   "opfscope", ["--eval-mode", "typed", "--per-class"]),
+)
 
-def run_one(
-    *,
-    benchmark: str,
-    data_dir: Path,
-    results_dir: Path,
-    device: str,
-    extra: list[str],
-) -> dict[str, dict]:
-    full = data_dir / f"{benchmark}_full.jsonl"
-    scope = data_dir / f"{benchmark}_opfscope.jsonl"
+PROGRESS_RE = re.compile(r"progress: examples=(\d+)(?:/(\d+))?")
 
-    if not full.exists():
-        raise FileNotFoundError(f"missing {full}; run the adapter first")
-    if not scope.exists():
-        raise FileNotFoundError(f"missing {scope}; run the adapter first")
 
-    out_dir = results_dir / benchmark
-    out_dir.mkdir(parents=True, exist_ok=True)
-
-    runs = {
-        "untyped_full": dict(
-            input=full,
-            args=["--eval-mode", "untyped"],
-            metrics_out=out_dir / "untyped_full_metrics.json",
-        ),
-        "untyped_opfscope": dict(
-            input=scope,
-            args=["--eval-mode", "untyped"],
-            metrics_out=out_dir / "untyped_opfscope_metrics.json",
-        ),
-        "typed_opfscope": dict(
-            input=scope,
-            args=["--eval-mode", "typed", "--per-class"],
-            metrics_out=out_dir / "typed_opfscope_metrics.json",
-        ),
-    }
-
-    results: dict[str, dict] = {}
-    for name, cfg in runs.items():
-        cmd = [
-            "opf",
-            "eval",
-            str(cfg["input"]),
-            "--device",
-            device,
-            "--metrics-out",
-            str(cfg["metrics_out"]),
-            *cfg["args"],
-            *extra,
-        ]
-        print(f"\n=== {benchmark}/{name} ===", flush=True)
-        print(" ".join(cmd), flush=True)
-        # Inherit terminal for both streams so opf eval's tqdm bar is visible live.
-        proc = subprocess.run(cmd, check=False)
-        if proc.returncode != 0:
-            print(f"  FAILED (exit {proc.returncode})", file=sys.stderr)
-            results[name] = {"error": f"exit {proc.returncode}"}
+def run_opf_eval(cmd: list[str], total: int, desc: str) -> int:
+    """Run `opf eval`, converting its `progress: examples=N/M` stderr into a tqdm bar."""
+    proc = subprocess.Popen(cmd, stderr=subprocess.PIPE, text=True, bufsize=1)
+    bar = tqdm(total=total, desc=desc, unit="ex")
+    last = 0
+    assert proc.stderr is not None
+    for line in proc.stderr:
+        m = PROGRESS_RE.search(line)
+        if not m:
+            tqdm.write(line.rstrip(), file=sys.stderr)
             continue
-
-        with cfg["metrics_out"].open("r", encoding="utf-8") as f:
-            metrics = json.load(f)
-        results[name] = metrics
-        m = metrics.get("metrics", {})
-        summary = metrics.get("summary", {})
-        f1 = m.get("detection.span.f1")
-        print(
-            f"  examples={summary.get('examples')} F1(strict span)={f1}",
-            flush=True,
-        )
-
-    return results
+        n = int(m.group(1))
+        if m.group(2):  # OPF tells us the real total when --max-examples is set
+            bar.total = int(m.group(2))
+            bar.refresh()
+        bar.update(n - last)
+        last = n
+    bar.close()
+    return proc.wait()
 
 
 def main() -> None:
     p = argparse.ArgumentParser()
-    p.add_argument(
-        "--benchmarks",
-        nargs="+",
-        default=list(BENCHMARKS),
-        choices=BENCHMARKS,
-    )
+    p.add_argument("--benchmarks", nargs="+", default=list(BENCHMARKS), choices=BENCHMARKS)
     p.add_argument("--data-dir", type=Path, default=Path("data"))
     p.add_argument("--results-dir", type=Path, default=Path("results"))
-    p.add_argument(
-        "--device",
-        default="cpu",
-        help="Pass through to `opf eval --device`. Use cpu, cuda, or mps.",
-    )
-    p.add_argument(
-        "--extra",
-        nargs=argparse.REMAINDER,
-        default=[],
-        help="Extra args appended to every `opf eval` call (e.g. --window-batch-size 8)",
-    )
+    p.add_argument("--device", default="cpu", help="cpu, cuda, or mps")
+    p.add_argument("--force", action="store_true",
+                   help="Re-run modes whose metrics JSON already exists.")
+    p.add_argument("--extra", nargs=argparse.REMAINDER, default=[],
+                   help="Extra args appended to every `opf eval` call (e.g. --window-batch-size 8)")
     args = p.parse_args()
 
-    summary: dict[str, dict] = {}
-    for bench in args.benchmarks:
-        summary[bench] = run_one(
-            benchmark=bench,
-            data_dir=args.data_dir,
-            results_dir=args.results_dir,
-            device=args.device,
-            extra=args.extra,
-        )
+    extra = list(args.extra)
+    if not any(t.startswith("--progress-every") for t in extra):
+        extra += ["--progress-every", "10"]
 
-    summary_path = args.results_dir / "summary.json"
-    summary_path.parent.mkdir(parents=True, exist_ok=True)
-    with summary_path.open("w", encoding="utf-8") as f:
-        json.dump(summary, f, indent=2, sort_keys=True)
-    print(f"\nSummary written to {summary_path}")
+    plans = [
+        (
+            bench, mode,
+            args.data_dir / f"{bench}_{suffix}.jsonl",
+            mode_args,
+            args.results_dir / bench / f"{mode}_metrics.json",
+        )
+        for bench in args.benchmarks
+        for mode, suffix, mode_args in MODES
+    ]
+
+    for i, (bench, mode, input_path, mode_args, metrics_out) in enumerate(plans, 1):
+        tag = f"[{i}/{len(plans)}] {bench}/{mode}"
+
+        if metrics_out.exists() and not args.force:
+            print(f"\n=== {tag} === SKIP ({metrics_out})", flush=True)
+            continue
+        if not input_path.exists():
+            sys.exit(f"missing {input_path}; run the dataset adapter first")
+        metrics_out.parent.mkdir(parents=True, exist_ok=True)
+
+        cmd = [
+            "opf", "eval", str(input_path),
+            "--device", args.device,
+            "--metrics-out", str(metrics_out),
+            *mode_args, *extra,
+        ]
+        print(f"\n=== {tag} ===\n{' '.join(cmd)}", flush=True)
+
+        total = sum(1 for _ in input_path.open("rb"))
+        rc = run_opf_eval(cmd, total=total, desc=tag)
+        if rc != 0:
+            sys.exit(f"{tag} FAILED (exit {rc})")
+
+        m = json.loads(metrics_out.read_text())
+        f1 = m.get("metrics", {}).get("detection.span.f1")
+        examples = m.get("summary", {}).get("examples")
+        print(f"  examples={examples} F1(strict span)={f1}", flush=True)
 
 
 if __name__ == "__main__":

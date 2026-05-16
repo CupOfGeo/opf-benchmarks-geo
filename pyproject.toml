@@ -13,11 +13,13 @@ dependencies = [
   # Bump intentionally when you want to re-run against a newer OPF release.
   "opf @ git+https://github.com/openai/privacy-filter.git@f7f00ca7fb869683eb732c010299d901457f19c3",
   "datasets",
+  "vastai>=1.0.12",
 ]
 
 [tool.setuptools.packages.find]
 include = ["opf_benchmarks*"]
 
+# uv self update :)
 [tool.uv]
 exclude-newer = "5 days"
 exclude-newer-package = { setuptools = "7 days" }

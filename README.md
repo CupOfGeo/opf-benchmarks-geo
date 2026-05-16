@@ -1,6 +1,6 @@
 # opf-benchmarks
 
-[![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/CupOfGeo/opf-benchmarks-geo/blob/main/notebooks/run_benchmarks.ipynb)
+[![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/CupOfGeo/opf-benchmarks-geo/blob/main/run_benchmarks.ipynb)
 
 Independent PII benchmark evaluations of [OpenAI Privacy Filter (OPF)](https://github.com/openai/privacy-filter) against the three benchmarks NVIDIA published numbers on in the [GLiNER-PII](https://huggingface.co/nvidia/gliner-PII) model card:
 
@@ -37,3 +37,7 @@ uv run python -m opf_benchmarks.aggregate                        # writes result
 - **Argilla labels are not gold.** The `pii.suggestion` field is mDeBERTa output, not human-validated. The 0.70 NVIDIA reports is against the same noisy labels.
 - **Nemotron is NVIDIA's home turf.** GLiNER-PII was trained on this dataset's train split. OPF's score here is fully out-of-distribution.
 - **AI4Privacy overlap.** Some AI4Privacy-derived data appears in GLiNER-PII's training mix (per NVIDIA's card). OPF here is out-of-distribution.
+
+
+vast.ai 
+https://cloud.vast.ai/cli/
