@@ -1,0 +1,15 @@
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.venv/
+*.egg-info/
+.idea/
+.DS_Store
+uv.lock
+
+# Generated artifacts — not tracked. Recreate by running:
+#   uv run python -m scripts.download_datasets
+#   uv run python -m opf_benchmarks.run_eval
+#   uv run python -m opf_benchmarks.aggregate
+data/
+results/

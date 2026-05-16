@@ -1,0 +1,23 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "opf-benchmarks"
+version = "0.1.0"
+description = "Independent PII benchmark evaluations of OpenAI Privacy Filter against the suite NVIDIA used for GLiNER-PII (Argilla, AI4Privacy, Nemotron-PII)."
+readme = "README.md"
+requires-python = ">=3.10"
+dependencies = [
+  # OPF pinned to the upstream commit these results were produced against.
+  # Bump intentionally when you want to re-run against a newer OPF release.
+  "opf @ git+https://github.com/openai/privacy-filter.git@f7f00ca7fb869683eb732c010299d901457f19c3",
+  "datasets",
+]
+
+[tool.setuptools.packages.find]
+include = ["opf_benchmarks*"]
+
+[tool.uv]
+exclude-newer = "5 days"
+exclude-newer-package = { setuptools = "7 days" }
