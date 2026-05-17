@@ -5,6 +5,16 @@ Each map keys benchmark-specific labels to one of OPF's 8 categories, or to
 ``_full`` JSONL with their original label so ``ground_truth_label_recall``
 breakdowns remain meaningful, and dropped from the ``_opfscope`` JSONL so
 typed evaluation is well-defined.
+
+The AI4Privacy table is a 1:1 port of OpenAI's published PII-Masking-300k
+mapping (Privacy Filter Model Card, April 2026, §7.2.1) where labels overlap;
+notably ``ip -> private_url``, ``username -> private_person``, and
+``otp -> secret``. The Argilla and Nemotron tables apply the same principles
+(GPS/coordinate spans -> private_address; IP/IPv4/IPv6 -> private_url;
+username/handle -> private_person) so the three benchmarks share one
+methodology. Hardware-asset identifiers (MAC, vehicle/device IDs, license
+plates, biometric IDs) remain out of scope because OpenAI's mapping does not
+include them.
 """
 
 OPF_CATEGORIES = {
@@ -54,11 +64,11 @@ ARGILLA_TO_OPF: dict[str, str | None] = {
     "PIN": "secret",
     "PASSWORD": "secret",
     "URL": "private_url",
-    "USERNAME": None,
+    "USERNAME": "private_person",
     "USERAGENT": None,
-    "IP": None,
-    "IPV4": None,
-    "IPV6": None,
+    "IP": "private_url",
+    "IPV4": "private_url",
+    "IPV6": "private_url",
     "MAC": None,
     "AGE": None,
     "GENDER": None,
@@ -68,7 +78,7 @@ ARGILLA_TO_OPF: dict[str, str | None] = {
     "JOBTYPE": None,
     "VEHICLEVIN": None,
     "VEHICLEVRM": None,
-    "NEARBYGPSCOORDINATE": None,
+    "NEARBYGPSCOORDINATE": "private_address",
     "ORDINALDIRECTION": None,
     "CURRENCY": None,
     "CURRENCYSYMBOL": None,
@@ -130,11 +140,11 @@ AI4PRIVACY_TO_OPF: dict[str, str | None] = {
     "PASS": "secret",
     "PIN": "secret",
     "URL": "private_url",
-    "USERNAME": None,
+    "USERNAME": "private_person",
     "USERAGENT": None,
-    "IP": None,
-    "IPV4": None,
-    "IPV6": None,
+    "IP": "private_url",
+    "IPV4": "private_url",
+    "IPV6": "private_url",
     "MAC": None,
     "SEX": None,
     "GENDER": None,
@@ -151,6 +161,14 @@ AI4PRIVACY_TO_OPF: dict[str, str | None] = {
     "NATIONALITY": None,
     "ETHNICITY": None,
     "POLITICAL": None,
+    "OTP": "secret",
+    "CARDEXPIRY": "private_date",
+    "BANKMUNICIP": "private_address",
+    "BANKPOSTCODE": "private_address",
+    "BANKSTREET": "private_address",
+    "BANKNUM": "account_number",
+    "DOCNUM": "account_number",
+    "CRYPTOADDRESS": "account_number",
 }
 
 
@@ -188,11 +206,11 @@ NEMOTRON_TO_OPF: dict[str, str | None] = {
     "password": "secret",
     "pin": "secret",
     "api_key": "secret",
-    "user_name": None,
-    "ipv4": None,
-    "ipv6": None,
+    "user_name": "private_person",
+    "ipv4": "private_url",
+    "ipv6": "private_url",
     "mac_address": None,
-    "coordinate": None,
+    "coordinate": "private_address",
     "device_identifier": None,
     "vehicle_identifier": None,
     "license_plate": None,
@@ -206,6 +224,72 @@ NEMOTRON_TO_OPF: dict[str, str | None] = {
     "political_view": None,
     "occupation": None,
     "education_level": None,
+    "credit_debit_card": "account_number",
+    "date_time": "private_date",
+    "time": "private_date",
+    "http_cookie": None,
+    "company_name": None,
+    "employment_status": None,
+    "language": None,
+    "unique_id": "account_number",
+}
+
+
+GRETEL_TO_OPF: dict[str, str | None] = {
+    # Personal names
+    "first_name": "private_person",
+    "last_name": "private_person",
+    "middle_name": "private_person",
+    "name": "private_person",
+    "full_name": "private_person",
+    "user_name": "private_person",
+    # Contact
+    "email": "private_email",
+    "phone_number": "private_phone",
+    "fax_number": "private_phone",
+    # Address
+    "street_address": "private_address",
+    "address": "private_address",
+    "city": "private_address",
+    "state": "private_address",
+    "country": "private_address",
+    "postcode": "private_address",
+    "coordinate": "private_address",
+    # Dates
+    "date": "private_date",
+    "date_of_birth": "private_date",
+    "date_time": "private_date",
+    "time": "private_date",
+    # Account / financial / government IDs
+    "ssn": "account_number",
+    "national_id": "account_number",
+    "tax_id": "account_number",
+    "account_number": "account_number",
+    "credit_card_number": "account_number",
+    "cvv": "account_number",
+    "swift_bic": "account_number",
+    "bank_routing_number": "account_number",
+    "customer_id": "account_number",
+    "employee_id": "account_number",
+    "medical_record_number": "account_number",
+    "health_plan_beneficiary_number": "account_number",
+    "certificate_license_number": "account_number",
+    "unique_identifier": "account_number",
+    # Secrets
+    "password": "secret",
+    "pin": "secret",
+    "api_key": "secret",
+    # URL / network
+    "url": "private_url",
+    "ipv4": "private_url",
+    "ipv6": "private_url",
+    # Out of OPF scope
+    "mac_address": None,
+    "device_identifier": None,
+    "vehicle_identifier": None,
+    "license_plate": None,
+    "biometric_identifier": None,
+    "company_name": None,
 }
 
 
@@ -213,6 +297,7 @@ MAPS = {
     "argilla": ARGILLA_TO_OPF,
     "ai4privacy": AI4PRIVACY_TO_OPF,
     "nemotron": NEMOTRON_TO_OPF,
+    "gretel": GRETEL_TO_OPF,
 }
 
 

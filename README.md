@@ -39,5 +39,31 @@ uv run python -m opf_benchmarks.aggregate                        # writes result
 - **AI4Privacy overlap.** Some AI4Privacy-derived data appears in GLiNER-PII's training mix (per NVIDIA's card). OPF here is out-of-distribution.
 
 
-vast.ai 
-https://cloud.vast.ai/cli/
+## Running on vast.ai
+
+For the full-split run (too slow on CPU), one script does the whole loop:
+
+```bash
+huggingface-cli login        # one-time; use a READ-ONLY fine-grained token
+./scripts/vast_run.sh        # provision -> run -> poll -> rsync to ./vast_results/
+```
+
+It picks an offer (interactive), creates the instance with `HF_TOKEN` injected
+via `--env`, launches the full eval in tmux on the box, polls every 5 min for
+completion, and rsyncs results into `./vast_results/`. The eval lives in tmux
+on the box, so if your laptop sleeps or the network drops just re-run with
+`INSTANCE_ID=<id> ./scripts/vast_run.sh` to resume polling. Pass
+`DESTROY_ON_SUCCESS=1` to auto-destroy the box after a clean pull.
+
+If you'd rather drive each step yourself, the underlying pieces are
+[vast_provision.sh](scripts/vast_provision.sh) (provision only),
+[vast_setup.sh](scripts/vast_setup.sh) (bootstrap + tmux eval, runs on the box),
+and [vast_pull_results.sh](scripts/vast_pull_results.sh) (rsync results back).
+
+**Security note:** vast.ai hosts have root on the physical machine and can read
+container env vars. Only ever send a **read-only** fine-grained HF token (scoped
+to just the datasets you need), and revoke it at
+<https://huggingface.co/settings/tokens> after the run. Never put write-scoped
+tokens, GitHub PATs, or cloud credentials on a vast box.
+
+vast.ai CLI docs: <https://cloud.vast.ai/cli/>

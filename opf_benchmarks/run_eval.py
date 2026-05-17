@@ -20,7 +20,7 @@ from pathlib import Path
 from tqdm import tqdm
 
 
-BENCHMARKS = ("argilla", "ai4privacy", "nemotron")
+BENCHMARKS = ("argilla", "ai4privacy", "nemotron", "gretel")
 
 # (mode_name, dataset_suffix, mode_args)
 MODES = (

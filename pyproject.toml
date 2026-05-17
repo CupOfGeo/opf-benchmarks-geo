@@ -14,6 +14,10 @@ dependencies = [
   "opf @ git+https://github.com/openai/privacy-filter.git@f7f00ca7fb869683eb732c010299d901457f19c3",
   "datasets",
   "vastai>=1.0.12",
+  "vastai-sdk>=1.0.12",
+  "matplotlib",
+  "seaborn",
+  "pandas",
 ]
 
 [tool.setuptools.packages.find]

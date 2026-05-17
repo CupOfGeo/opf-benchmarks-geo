@@ -7,12 +7,18 @@ import json
 from pathlib import Path
 
 
-BENCHMARKS = ("argilla", "ai4privacy", "nemotron")
+BENCHMARKS = ("argilla", "ai4privacy", "nemotron", "gretel")
 BENCHMARK_DISPLAY = {
     "argilla": "Argilla PII",
     "ai4privacy": "AI4Privacy",
     "nemotron": "Nemotron-PII",
+    "gretel": "Gretel PII",
 }
+# NVIDIA's GLiNER-PII model card publishes strict F1 for three benchmarks; the
+# Gretel V1/V2 row is listed as an eval dataset but the published numeric F1
+# table covers only Argilla, AI4Privacy, and an in-distribution "nvidia dataset"
+# row (= Nemotron-PII). No NVIDIA-published number exists for the Gretel
+# benchmark in apples-to-apples form, so it's intentionally absent here.
 NVIDIA_REPORTED = {
     "argilla": 0.70,
     "ai4privacy": 0.64,
@@ -142,12 +148,13 @@ def main() -> None:
     )
     lines.append("|---|---|---|---|---|")
     for bench in BENCHMARKS:
-        nv = NVIDIA_REPORTED[bench]
+        nv = NVIDIA_REPORTED.get(bench)
+        nv_cell = f"{nv:.2f}" if nv is not None else "—"
         uf = _metric(payloads[bench]["untyped_full"], "detection.span.f1")
         uo = _metric(payloads[bench]["untyped_opfscope"], "detection.span.f1")
         to = _metric(payloads[bench]["typed_opfscope"], "detection.span.f1")
         lines.append(
-            f"| {BENCHMARK_DISPLAY[bench]} | {nv:.2f} | {_fmt(uf)} | {_fmt(uo)} | {_fmt(to)} |"
+            f"| {BENCHMARK_DISPLAY[bench]} | {nv_cell} | {_fmt(uf)} | {_fmt(uo)} | {_fmt(to)} |"
         )
     lines.append("")
     lines.append(

@@ -17,7 +17,7 @@ from collections import Counter
 from pathlib import Path
 from typing import Callable, Iterable, Mapping
 
-from opf_benchmarks.adapters import ai4privacy, argilla, nemotron
+from opf_benchmarks.adapters import ai4privacy, argilla, gretel, nemotron
 from opf_benchmarks.opf_format import example_to_opf_records
 
 
@@ -25,6 +25,7 @@ ADAPTERS: dict[str, Callable[..., Iterable[Mapping[str, object]]]] = {
     "argilla": argilla.iter_examples,
     "ai4privacy": ai4privacy.iter_examples,
     "nemotron": nemotron.iter_examples,
+    "gretel": gretel.iter_examples,
 }
 
 
