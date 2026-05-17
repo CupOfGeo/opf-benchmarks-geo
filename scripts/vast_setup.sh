@@ -85,18 +85,32 @@ if tmux has-session -t eval 2>/dev/null; then
 fi
 
 REPO_PATH="$(pwd)"
-# Sentinel file lets the laptop-side orchestrator (vast_run.sh) poll for completion.
+# Sentinel file lets the laptop-side orchestrator poll for completion.
 # Removed up-front so a re-run doesn't see a stale flag.
 rm -f "$REPO_PATH/results/.eval_done" "$REPO_PATH/results/.eval_failed"
+
+# OPF_SMOKE=1 (passed from vast_run.py --smoke): one benchmark, 50 examples, ~30s.
+# Used to validate the provision → run → sentinel → rsync → destroy lifecycle without
+# burning 14h of GPU time.
+if [[ "${OPF_SMOKE:-}" == "1" ]]; then
+    DOWNLOAD_ARGS="--benchmarks argilla --max-examples 50"
+    EVAL_ARGS="--device cuda --benchmarks argilla --extra --window-batch-size 32"
+    RUN_LABEL="smoke (argilla, 50 ex)"
+else
+    DOWNLOAD_ARGS=""
+    EVAL_ARGS="--device cuda --extra --window-batch-size 32"
+    RUN_LABEL="full eval (~14h on a 4090)"
+fi
+
 tmux new-session -d -s eval "bash -c 'cd $REPO_PATH && \
-    python -m scripts.download_datasets 2>&1 | tee download.log && \
-    python -m opf_benchmarks.run_eval --device cuda --extra --window-batch-size 32 2>&1 | tee run.log && \
+    python -m scripts.download_datasets $DOWNLOAD_ARGS 2>&1 | tee download.log && \
+    python -m opf_benchmarks.run_eval $EVAL_ARGS 2>&1 | tee run.log && \
     mkdir -p results && touch results/.eval_done || (mkdir -p results && touch results/.eval_failed); \
     echo \"--- eval exited with code \$? ---\"; exec bash'"
 
 cat <<EOF
 
---- Eval launched in tmux session 'eval' (~14h on a 4090) ---
+--- Eval launched in tmux session 'eval': $RUN_LABEL ---
 
 Watch:    tmux attach -t eval        (detach: Ctrl-b then d)
 Logs:     tail -f $REPO_PATH/run.log
