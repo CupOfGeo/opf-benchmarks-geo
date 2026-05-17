@@ -35,13 +35,13 @@ from vastai_sdk import VastAI
 IMAGE = "nvcr.io/nvidia/pytorch:24.05-py3"
 DISK_GB = 60
 QUERY = (
-    # 24GB+ only: OPF + window-batch-size 32 OOMs on the 12GB 3080 Ti at nemotron's
-    # longer sequences. RTX 3090 is the sweet spot (24GB, cheap).
-    "gpu_name in [RTX_4090,RTX_3090] num_gpus=1 gpu_ram>=20000 cuda_vers>=12.4 "
+    # 24GB only: OPF + window-batch-size 32 OOMs on the 12GB 3080 Ti at nemotron's
+    # longer sequences. Both 4090 and 3090 are 24GB so gpu_name filter is sufficient.
+    "gpu_name in [RTX_4090,RTX_3090] num_gpus=1 cuda_vers>=12.4 "
     f"disk_space>={DISK_GB} inet_down>=100 rentable=true verified=true"
 )
 SETUP_URL = "https://raw.githubusercontent.com/CupOfGeo/opf-benchmarks-geo/main/scripts/vast_setup.sh"
-REPO_DIR = "opf-benchmarks-geo"
+REPO_DIR = "/workspace/opf-benchmarks-geo"  # absolute — vast_setup.sh pins to /workspace
 REMOTE_RESULTS = f"{REPO_DIR}/results/"
 LOCAL_RESULTS = Path("./vast_results/")
 SENTINEL_DONE = f"{REPO_DIR}/results/.eval_done"

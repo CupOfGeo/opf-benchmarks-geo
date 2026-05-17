@@ -16,6 +16,11 @@ set -euo pipefail
 REPO_URL="${REPO_URL:-https://github.com/CupOfGeo/opf-benchmarks-geo.git}"
 REPO_DIR="${REPO_DIR:-opf-benchmarks-geo}"
 
+# Pin to /workspace — that's where vast's NGC images start onstart_cmd. Keeps the
+# repo path predictable so the laptop-side poller knows exactly where to look,
+# regardless of where setup.sh was invoked from.
+mkdir -p /workspace && cd /workspace
+
 # vast.ai writes --env values into /etc/environment but non-login shells don't
 # always source it. Pull HF_TOKEN from there if it's not already in the env.
 if [[ -z "${HF_TOKEN:-}" && -r /etc/environment ]]; then

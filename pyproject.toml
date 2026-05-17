@@ -23,7 +23,7 @@ dependencies = [
 [tool.setuptools.packages.find]
 include = ["opf_benchmarks*"]
 
-# uv self update :)
+# `uv self update` stay safe out there y'all :)
 [tool.uv]
 exclude-newer = "5 days"
 exclude-newer-package = { setuptools = "7 days" }
